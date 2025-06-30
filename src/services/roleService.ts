@@ -31,9 +31,12 @@ export interface UserRole {
   id?: string;
   userId?: string;
   fullName: string;
+  name?: string; // backup name field
   email: string;
   role: number;
   roleName?: string;
+  status?: 'active' | 'pending' | 'suspended';
+  lastLogin?: string;
   createdAt?: string;
   updatedAt?: string;
 }

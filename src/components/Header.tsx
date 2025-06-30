@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, MapPin, User, Heart, Calendar, Menu, X, LogOut, Sparkles, Settings, Users, RefreshCw } from 'lucide-react';
+import { Search, MapPin, User, Heart, Calendar, Menu, X, LogOut, Sparkles, Settings, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 

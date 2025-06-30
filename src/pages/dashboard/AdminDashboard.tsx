@@ -1,12 +1,12 @@
 //-------------------------------------------------------
 // src/pages/dashboard/AdminDashboard.tsx
 //-------------------------------------------------------
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   BarChart3, Users, Calendar, MapPin, Settings, Shield, TrendingUp,
-  AlertTriangle, CheckCircle, XCircle, Eye, Edit, Trash2, Search, Filter,
-  Plus, Download, Mail, Phone, Star, DollarSign, Clock, UserCheck, UserX,
-  FileText, Building, Briefcase
+  AlertTriangle, CheckCircle, XCircle, Eye, Edit, Trash2, Search,
+  Download, Mail, Star, DollarSign, Clock, UserCheck, UserX,
+  FileText, Building, Briefcase, Crown, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +19,7 @@ import { toast } from 'react-hot-toast';
 
 import { useEvents } from '../../hooks/useEvents';
 import { useRestaurants } from '../../hooks/useRestaurant';
+import { useRoles, useRoleManagement } from '../../hooks/useRoles';
 
 import type { Event, Restaurant } from '../../types';
 
@@ -61,6 +62,35 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] =
     useState<'overview' | 'users' | 'role-requests' | 'events' | 'restaurants' | 'analytics' | 'settings'>('overview');
 
+  // User management state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<number | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [newRole, setNewRole] = useState<number>(0);
+
+  // User management hooks
+  const { 
+    users, 
+    totalCount, 
+    totalPages, 
+    loading: usersLoading, 
+    error: usersError, 
+    updateUserRole 
+  } = useRoles({
+    page: currentPage,
+    limit: 10,
+    role: roleFilter,
+    autoFetch: true
+  });
+
+  const { 
+    loading: updating, 
+    getRoleName
+  } = useRoleManagement();
+
   /* -------------------------------------------------- */
   /*  📡  Événements                                     */
   /* -------------------------------------------------- */
@@ -85,9 +115,10 @@ export const AdminDashboard: React.FC = () => {
   } = useRestaurants();
   const restaurants = rawRestaurants as RestaurantAdmin[];
 
-  const restActive    = restaurants.filter(r => r.status === 'active').length;
-  const restPending   = restaurants.filter(r => r.status === 'pending').length;
-  const restSuspended = restaurants.filter(r => r.status === 'suspended').length;
+  // Restaurant statistics (for future use)
+  // const restActive    = restaurants.filter(r => r.status === 'active').length;
+  // const restPending   = restaurants.filter(r => r.status === 'pending').length;
+  // const restSuspended = restaurants.filter(r => r.status === 'suspended').length;
 
   /* -------------------------------------------------- */
   /*  📡  Demandes de rôles — plus de hook, array vide  */
@@ -135,6 +166,60 @@ export const AdminDashboard: React.FC = () => {
   const handleRejectRequest = (id: number, role: 'partner' | 'organizer') => {
     console.log(`rejectRequest for id ${id} as ${role}`);
   };
+
+  // User management handlers
+  const handleEditUser = (userToEdit: any) => {
+    setEditingUser(userToEdit);
+    setNewRole(userToEdit.role);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateUserRole = async () => {
+    if (!editingUser) return;
+
+    try {
+      await updateUserRole(editingUser.id, newRole);
+      setShowEditModal(false);
+      setEditingUser(null);
+      toast.success('User role updated successfully!');
+    } catch (error) {
+      console.error('Failed to update user role:', error);
+      toast.error('Failed to update user role. Please try again.');
+    }
+  };
+
+  const handleRoleFilter = (role: number | undefined) => {
+    setRoleFilter(role);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const getRoleIcon = (role: number) => {
+    switch (role) {
+      case 3: return <Crown className="w-4 h-4 text-purple-500" />;
+      case 2: return <Building className="w-4 h-4 text-blue-500" />;
+      case 1: return <UserCheck className="w-4 h-4 text-green-500" />;
+      default: return <Users className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getRoleBadgeColor = (role: number) => {
+    switch (role) {
+      case 3: return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 2: return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 1: return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => 
+    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   /* -------------------------------------------------- */
   /*  Garde-fous : erreurs & chargement                 */
@@ -215,57 +300,6 @@ export const AdminDashboard: React.FC = () => {
     },
   ];
 
-  const mockUsers = [
-    {
-      id: 1,
-      name: 'Ahmed Benali',
-      email: 'ahmed.benali@email.com',
-      role: 'user',
-      status: 'active',
-      joinDate: '2024-12-15T10:30:00Z',
-      lastLogin: '2025-01-10T14:20:00Z',
-      totalBookings: 12,
-      totalSpent: '3,450 MAD'
-    },
-    {
-      id: 2,
-      name: 'Fatima El Mansouri',
-      email: 'fatima.elmansouri@email.com',
-      role: 'organizer',
-      status: 'active',
-      joinDate: '2024-11-20T09:15:00Z',
-      lastLogin: '2025-01-10T16:45:00Z',
-      totalBookings: 0,
-      totalSpent: '0 MAD',
-      eventsCreated: 8,
-      totalRevenue: '45,600 MAD'
-    },
-    {
-      id: 3,
-      name: 'Youssef Alaoui',
-      email: 'youssef.alaoui@email.com',
-      role: 'partner',
-      status: 'pending',
-      joinDate: '2025-01-05T11:00:00Z',
-      lastLogin: '2025-01-09T13:30:00Z',
-      totalBookings: 0,
-      totalSpent: '0 MAD',
-      restaurantsOwned: 2,
-      totalRevenue: '23,800 MAD'
-    },
-    {
-      id: 4,
-      name: 'Khadija Berrada',
-      email: 'khadija.berrada@email.com',
-      role: 'user',
-      status: 'suspended',
-      joinDate: '2024-10-12T14:20:00Z',
-      lastLogin: '2025-01-08T10:15:00Z',
-      totalBookings: 5,
-      totalSpent: '1,200 MAD'
-    }
-  ];
-
   const recentActivities = [
     {
       id: 1,
@@ -336,19 +370,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-red-100 text-red-800';
-      case 'organizer':
-        return 'bg-blue-100 text-blue-800';
-      case 'partner':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'user_registration':
@@ -398,7 +419,7 @@ export const AdminDashboard: React.FC = () => {
             {tabs.map((tab) => (
                 <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => setActiveTab(tab.id as 'overview' | 'users' | 'role-requests' | 'events' | 'restaurants' | 'analytics' | 'settings')}
                     className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium whitespace-nowrap transition-all ${
                     activeTab === tab.id
                         ? 'bg-orange-500 text-white shadow-lg'
@@ -531,14 +552,25 @@ export const AdminDashboard: React.FC = () => {
                             />
                           </div>
                           <select
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                           >
                             <option value="all">Tous les statuts</option>
                             <option value="active">Actifs</option>
                             <option value="pending">En attente</option>
                             <option value="suspended">Suspendus</option>
+                          </select>
+                          <select
+                            value={roleFilter || ''}
+                            onChange={(e) => handleRoleFilter(e.target.value ? parseInt(e.target.value) : undefined)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          >
+                            <option value="">Tous les rôles</option>
+                            <option value="0">Utilisateur</option>
+                            <option value="1">Organisateur</option>
+                            <option value="2">Partenaire</option>
+                            <option value="3">Admin</option>
                           </select>
                       </div>
                   </div>
@@ -560,78 +592,133 @@ export const AdminDashboard: React.FC = () => {
                           </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                          {mockUsers.map((user) => (
-                          <tr key={user.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4">
-                              <div>
-                                  <div className="font-semibold text-gray-900">{user.name}</div>
-                                  <div className="text-sm text-gray-500">{user.email}</div>
-                              </div>
+                          {usersLoading ? (
+                            <tr>
+                              <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                Chargement des utilisateurs...
                               </td>
-                              <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium capitalize ${getRoleColor(user.role)}`}>
-                                  {user.role === 'organizer' ? 'Organisateur' : 
-                                  user.role === 'partner' ? 'Partenaire' : 
-                                  user.role === 'admin' ? 'Admin' : 'Utilisateur'}
-                              </span>
+                            </tr>
+                          ) : usersError ? (
+                            <tr>
+                              <td colSpan={7} className="px-6 py-8 text-center text-red-500">
+                                Erreur: {usersError}
                               </td>
-                              <td className="px-6 py-4">
-                              <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(user.status)}`}>
-                                  {getStatusIcon(user.status)}
-                                  <span className="capitalize">{user.status === 'active' ? 'Actif' : user.status === 'pending' ? 'En attente' : 'Suspendu'}</span>
-                              </span>
+                            </tr>
+                          ) : filteredUsers.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                Aucun utilisateur trouvé
                               </td>
-                              <td className="px-6 py-4 text-sm text-gray-600">
-                              {format(new Date(user.joinDate), 'dd/MM/yyyy', { locale: fr })}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-600">
-                              {format(new Date(user.lastLogin), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-600">
-                              {user.role === 'user' ? (
+                            </tr>
+                          ) : (
+                            filteredUsers.map((user) => (
+                              <tr key={user.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4">
                                   <div>
-                                  <div>{user.totalBookings} réservations</div>
-                                  <div className="text-xs text-gray-500">{user.totalSpent}</div>
+                                    <div className="font-semibold text-gray-900">{user.fullName || user.name}</div>
+                                    <div className="text-sm text-gray-500">{user.email}</div>
                                   </div>
-                              ) : user.role === 'organizer' ? (
-                                  <div>
-                                  <div>{user.eventsCreated} événements</div>
-                                  <div className="text-xs text-gray-500">{user.totalRevenue}</div>
-                                  </div>
-                              ) : (
-                                  <div>
-                                  <div>{user.restaurantsOwned} restaurants</div>
-                                  <div className="text-xs text-gray-500">{user.totalRevenue}</div>
-                                  </div>
-                              )}
-                              </td>
-                              <td className="px-6 py-4">
-                              <div className="flex items-center space-x-2">
-                                  <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
-                                      <Eye className="w-4 h-4" />
-                                  </button>
-                                  <button className="p-2 text-gray-400 hover:text-orange-600 transition-colors">
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadgeColor(user.role)}`}>
+                                    {getRoleIcon(user.role)}
+                                    <span>{getRoleName(user.role)}</span>
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(user.status || 'active')}`}>
+                                    {getStatusIcon(user.status || 'active')}
+                                    <span className="capitalize">
+                                      {user.status === 'active' ? 'Actif' : 
+                                       user.status === 'pending' ? 'En attente' : 
+                                       user.status === 'suspended' ? 'Suspendu' : 'Actif'}
+                                    </span>
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">
+                                  {user.createdAt ? format(new Date(user.createdAt), 'dd/MM/yyyy', { locale: fr }) : '—'}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">
+                                  {user.lastLogin ? format(new Date(user.lastLogin), 'dd/MM/yyyy HH:mm', { locale: fr }) : '—'}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">
+                                  <div>Voir profil</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center space-x-2">
+                                    <button 
+                                      onClick={() => handleEditUser(user)}
+                                      className="p-2 text-gray-400 hover:text-orange-600 transition-colors"
+                                      title="Modifier le rôle"
+                                    >
                                       <Edit className="w-4 h-4" />
-                                  </button>
-                                  <button className="p-2 text-gray-400 hover:text-green-600 transition-colors">
+                                    </button>
+                                    <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors" title="Voir le profil">
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button className="p-2 text-gray-400 hover:text-green-600 transition-colors" title="Envoyer un email">
                                       <Mail className="w-4 h-4" />
-                                  </button>
-                                  {user.status === 'active' ? (
-                                      <button className="p-2 text-gray-400 hover:text-red-600 transition-colors">
-                                          <UserX className="w-4 h-4" />
+                                    </button>
+                                    {user.status === 'active' ? (
+                                      <button className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Suspendre">
+                                        <UserX className="w-4 h-4" />
                                       </button>
-                                  ) : (
-                                      <button className="p-2 text-gray-400 hover:text-green-600 transition-colors">
-                                          <UserCheck className="w-4 h-4" />
+                                    ) : (
+                                      <button className="p-2 text-gray-400 hover:text-green-600 transition-colors" title="Activer">
+                                        <UserCheck className="w-4 h-4" />
                                       </button>
-                                  )}
-                              </div>
-                              </td>
-                          </tr>
-                          ))}
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
                       </tbody>
-                      </table>
+                    </table>
                   </div>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="bg-gray-50 px-6 py-4 border-t">
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-700">
+                          Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, totalCount)} of {totalCount} users
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+                          {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                            const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                            return (
+                              <button
+                                key={page}
+                                onClick={() => handlePageChange(page)}
+                                className={`px-3 py-1 border rounded text-sm ${
+                                  page === currentPage
+                                    ? 'bg-orange-500 text-white border-orange-500'
+                                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            );
+                          })}
+                          <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
             </motion.div>
         )}
@@ -718,8 +805,8 @@ export const AdminDashboard: React.FC = () => {
                             </td>
 
                             <td className="px-6 py-4">
-                            <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(event.status)}`}>
-                                {getStatusIcon(event.status)}
+                            <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(event.status || 'published')}`}>
+                                {getStatusIcon(event.status || 'published')}
                                 <span className="capitalize">
                                 {event.status === 'published'
                                     ? 'Publié'
@@ -746,7 +833,7 @@ export const AdminDashboard: React.FC = () => {
                             </td>
 
                             <td className="px-6 py-4">
-                            {event.reports > 0 ? (
+                            {(event.reports || 0) > 0 ? (
                                 <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium">
                                 {event.reports}
                                 </span>
@@ -850,11 +937,11 @@ export const AdminDashboard: React.FC = () => {
 
                                 <td className="px-6 py-4 text-gray-600">{r.owner ?? '—'}</td>
 
-                                <td className="px-6 py-4 text-gray-600">{r.cuisineType ?? r.cuisine}</td>
+                                <td className="px-6 py-4 text-gray-600">{r.cuisineType || 'N/A'}</td>
 
                                 <td className="px-6 py-4">
-                                <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(r.status)}`}>
-                                    {getStatusIcon(r.status)}
+                                <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(r.status || 'active')}`}>
+                                    {getStatusIcon(r.status || 'active')}
                                     <span className="capitalize">
                                     {r.status === 'active'
                                         ? 'Actif'
@@ -866,12 +953,12 @@ export const AdminDashboard: React.FC = () => {
                                 </td>
 
                                 <td className="px-6 py-4">
-                                {r.rating ? (
+                                {r.averageRating ? (
                                     <div className="flex items-center space-x-1">
                                       <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                                      <span className="font-semibold">{r.rating.toFixed(1)}</span>
+                                      <span className="font-semibold">{r.averageRating.toFixed(1)}</span>
                                       <span className="text-sm text-gray-500">
-                                          ({r.reviewCount ?? r.totalReviews ?? 0})
+                                          ({r.reviewCount || 0})
                                       </span>
                                     </div>
                                 ) : (
@@ -899,7 +986,7 @@ export const AdminDashboard: React.FC = () => {
 
                                     {/* Supprimer */}
                                     <button
-                                      disabled={deleteRestaurant.isLoading}
+                                      disabled={deleteRestaurant.isPending}
                                       onClick={() => handleDeleteRestaurant(r.id, r.name)}
                                       className="p-2 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
                                     >
@@ -1201,6 +1288,66 @@ export const AdminDashboard: React.FC = () => {
             </motion.div>
         )}
       </div>
+
+      {/* Edit User Role Modal */}
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Edit User Role</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  User
+                </label>
+                <p className="text-sm text-gray-900">{editingUser.fullName || editingUser.name}</p>
+                <p className="text-sm text-gray-500">{editingUser.email}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Role
+                </label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value={0}>Client</option>
+                  <option value={1}>Organizer</option>
+                  <option value={2}>Partner</option>
+                  <option value={3}>Admin</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={updating}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateUserRole}
+                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:opacity-50"
+                disabled={updating}
+              >
+                {updating ? 'Updating...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

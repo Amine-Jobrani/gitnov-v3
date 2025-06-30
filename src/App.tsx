@@ -26,7 +26,7 @@ import { ExplorePage } from './pages/ExplorePage';
 import { AdminDashboard } from './pages/dashboard/AdminDashboard';
 import { RestaurantCheckoutPage } from './pages/RestaurantCheckoutPage';
 import UserManagementPage from './pages/UserManagementPage';
-import { RoleSettingsPage } from './pages/RoleSettingsPage';
+import RoleSettingsPage from './pages/RoleSettingsPage';
 import RoleTestPage from './pages/RoleTestPage';
 
 // Inside your <Routes>
