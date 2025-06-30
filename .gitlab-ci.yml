@@ -1,0 +1,48 @@
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+
+stages:
+  - test    
+  - build 
+  - deploy         
+
+variables:
+  IMAGE_SHA: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  IMAGE_LATEST: "$CI_REGISTRY_IMAGE:latest"
+
+default:
+  tags:
+    - linux-docker
+
+# 🔨 Build the image
+build:
+  stage: build
+  tags:
+    - linux-shell
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker build -t "$IMAGE_SHA" .
+    - docker tag "$IMAGE_SHA" "$IMAGE_LATEST"
+    - docker push "$IMAGE_LATEST"
+
+# 🚀 Deploy frontend
+deploy-frontend:
+  stage: deploy
+  image: google/cloud-sdk:latest
+  needs:
+    - build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  environment:
+    name: production
+  script:
+    - echo "$GCP_SA_KEY" | base64 -d > gcp-key.json
+    - gcloud auth activate-service-account --key-file=gcp-key.json
+    - gcloud config set project "$GCP_PROJECT_ID"
+    - gcloud container clusters get-credentials prod-cluster --region europe-west1
+
+    - kubectl apply -f ./k8s/frontend-deployment.yaml -n frontend
+    - kubectl apply -f ./k8s/ingress.yaml -n frontend
+
+    - kubectl rollout restart deployment/frontend -n frontend

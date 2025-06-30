@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry-secret
+      volumes:
+        - name: log-volume
+          emptyDir: {}
+      initContainers:
+        - name: init-nginx-logs
+          image: busybox:1.35
+          command: ['sh', '-c']
+          args:
+            - |
+              mkdir -p /var/log/nginx
+              touch /var/log/nginx/access.log /var/log/nginx/error.log
+              chmod 755 /var/log/nginx
+              chmod 644 /var/log/nginx/*.log
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log
+      containers:
+        - name: frontend
+          image: registry.gitlab.com/gitnov/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: VITE_API_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-env
+                  key: VITE_API_BASE_URL
+            - name: VITE_FIREBASE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-env
+                  key: VITE_FIREBASE_API_KEY
+            - name: VITE_FIREBASE_AUTH_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-env
+                  key: VITE_FIREBASE_AUTH_DOMAIN
+            - name: VITE_FIREBASE_PROJECT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-env
+                  key: VITE_FIREBASE_PROJECT_ID
+            - name: VITE_FIREBASE_STORAGE_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-env
+                  key: VITE_FIREBASE_STORAGE_BUCKET
+            - name: VITE_FIREBASE_MESSAGING_SENDER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-env
+                  key: VITE_FIREBASE_MESSAGING_SENDER_ID
+            - name: VITE_FIREBASE_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-env
+                  key: VITE_FIREBASE_APP_ID
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
