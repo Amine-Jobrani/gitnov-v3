@@ -1,7 +1,8 @@
 // src/pages/RoleSettingsPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import RoleSelectionModal from '../components/RoleSelectionModal';
+import RoleService, { UserRole } from '../services/roleService';
 import { 
   User as UserIcon, 
   Settings, 
@@ -10,12 +11,48 @@ import {
   Info,
   Crown,
   Building,
-  UserCheck
+  UserCheck,
+  Loader
 } from 'lucide-react';
 
 const RoleSettingsPage: React.FC = () => {
   const { user } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch current user role from backend
+  useEffect(() => {
+    const fetchCurrentRole = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const roleData = await RoleService.getUserRole(user.id);
+        setCurrentUserRole(roleData);
+        console.log('✅ Current user role fetched:', roleData);
+      } catch (err) {
+        console.error('❌ Failed to fetch current role:', err);
+        setError('Failed to load current role');
+        // Fallback to user role from auth context
+        if (user?.role) {
+          setCurrentUserRole({
+            id: user.id,
+            fullName: user.fullName || 'Unknown User',
+            email: user.email || '',
+            role: RoleService.getRoleNumber(user.role),
+            roleName: user.role
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentRole();
+  }, [user]);
 
   if (!user) {
     return (
@@ -29,8 +66,9 @@ const RoleSettingsPage: React.FC = () => {
     );
   }
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
+  const getRoleIcon = (roleNumber: number) => {
+    const roleName = RoleService.getRoleName(roleNumber);
+    switch (roleName) {
       case 'admin': return <Crown className="w-6 h-6 text-purple-500" />;
       case 'partner': return <Building className="w-6 h-6 text-blue-500" />;
       case 'organizer': return <UserCheck className="w-6 h-6 text-green-500" />;
@@ -38,8 +76,9 @@ const RoleSettingsPage: React.FC = () => {
     }
   };
 
-  const getRoleDescription = (role: string) => {
-    switch (role) {
+  const getRoleDescription = (roleNumber: number) => {
+    const roleName = RoleService.getRoleName(roleNumber);
+    switch (roleName) {
       case 'admin':
         return 'Full access to all system features including user management and system administration.';
       case 'partner':
@@ -52,8 +91,9 @@ const RoleSettingsPage: React.FC = () => {
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
+  const getRoleBadgeColor = (roleNumber: number) => {
+    const roleName = RoleService.getRoleName(roleNumber);
+    switch (roleName) {
       case 'admin': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'partner': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'organizer': return 'bg-green-100 text-green-800 border-green-200';
@@ -61,9 +101,18 @@ const RoleSettingsPage: React.FC = () => {
     }
   };
 
-  const handleRoleChanged = () => {
-    // Optionally refresh the page or show a success message
-    window.location.reload();
+  const handleRoleChanged = async () => {
+    // Refresh the role data from backend
+    if (user?.id) {
+      try {
+        const roleData = await RoleService.getUserRole(user.id);
+        setCurrentUserRole(roleData);
+        console.log('✅ Role refreshed after change:', roleData);
+      } catch (err) {
+        console.error('❌ Failed to refresh role after change:', err);
+        // Optionally show an error message
+      }
+    }
   };
 
   return (
@@ -82,69 +131,81 @@ const RoleSettingsPage: React.FC = () => {
 
         {/* Current Role Card */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0">
-                {getRoleIcon(user.role)}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h2 className="text-xl font-semibold text-gray-900">Current Role</h2>
-                  <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full border ${getRoleBadgeColor(user.role)}`}>
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </span>
-                </div>
-                <p className="text-gray-600 mb-4">
-                  {getRoleDescription(user.role)}
-                </p>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-medium text-gray-900 mb-2">Role Permissions:</h3>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    {user.role === 'admin' && (
-                      <>
-                        <li>• Manage all users and their roles</li>
-                        <li>• Access system administration features</li>
-                        <li>• View analytics and reports</li>
-                        <li>• Create and manage events and restaurants</li>
-                        <li>• Full platform access</li>
-                      </>
-                    )}
-                    {user.role === 'partner' && (
-                      <>
-                        <li>• Create and manage events</li>
-                        <li>• Access partner dashboard</li>
-                        <li>• View event analytics</li>
-                        <li>• Manage event reservations</li>
-                      </>
-                    )}
-                    {user.role === 'organizer' && (
-                      <>
-                        <li>• Create and manage restaurants</li>
-                        <li>• Access organizer dashboard</li>
-                        <li>• View restaurant analytics</li>
-                        <li>• Manage restaurant reservations</li>
-                      </>
-                    )}
-                    {user.role === 'client' && (
-                      <>
-                        <li>• Browse restaurants and events</li>
-                        <li>• Make reservations</li>
-                        <li>• Add items to favorites</li>
-                        <li>• Manage personal profile</li>
-                      </>
-                    )}
-                  </ul>
-                </div>
-              </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader className="w-6 h-6 animate-spin text-blue-600 mr-2" />
+              <span className="text-gray-600">Loading current role...</span>
             </div>
-            <button
-              onClick={() => setShowRoleModal(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Edit className="w-4 h-4" />
-              <span>Change Role</span>
-            </button>
-          </div>
+          ) : error ? (
+            <div className="flex items-center justify-center py-8">
+              <Shield className="w-6 h-6 text-red-500 mr-2" />
+              <span className="text-red-600">{error}</span>
+            </div>
+          ) : currentUserRole ? (
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  {getRoleIcon(currentUserRole.role)}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h2 className="text-xl font-semibold text-gray-900">Current Role</h2>
+                    <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full border ${getRoleBadgeColor(currentUserRole.role)}`}>
+                      {currentUserRole.roleName || RoleService.getRoleName(currentUserRole.role)}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 mb-4">
+                    {getRoleDescription(currentUserRole.role)}
+                  </p>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-medium text-gray-900 mb-2">Role Permissions:</h3>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      {currentUserRole.role === 3 && (
+                        <>
+                          <li>• Manage all users and their roles</li>
+                          <li>• Access system administration features</li>
+                          <li>• View analytics and reports</li>
+                          <li>• Create and manage events and restaurants</li>
+                          <li>• Full platform access</li>
+                        </>
+                      )}
+                      {currentUserRole.role === 2 && (
+                        <>
+                          <li>• Create and manage events</li>
+                          <li>• Access partner dashboard</li>
+                          <li>• View event analytics</li>
+                          <li>• Manage event reservations</li>
+                        </>
+                      )}
+                      {currentUserRole.role === 1 && (
+                        <>
+                          <li>• Create and manage restaurants</li>
+                          <li>• Access organizer dashboard</li>
+                          <li>• View restaurant analytics</li>
+                          <li>• Manage restaurant reservations</li>
+                        </>
+                      )}
+                      {currentUserRole.role === 0 && (
+                        <>
+                          <li>• Browse restaurants and events</li>
+                          <li>• Make reservations</li>
+                          <li>• Add items to favorites</li>
+                          <li>• Manage personal profile</li>
+                        </>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRoleModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Change Role</span>
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {/* Role Information */}
@@ -157,6 +218,7 @@ const RoleSettingsPage: React.FC = () => {
           <div className="grid gap-4">
             {[
               {
+                roleNumber: 0,
                 role: 'client',
                 name: 'Client',
                 description: 'Perfect for users who want to discover and enjoy restaurants and events.',
@@ -164,6 +226,7 @@ const RoleSettingsPage: React.FC = () => {
                 color: 'text-gray-600'
               },
               {
+                roleNumber: 1,
                 role: 'organizer',
                 name: 'Organizer',
                 description: 'Ideal for restaurant owners and managers who want to showcase their venues.',
@@ -171,6 +234,7 @@ const RoleSettingsPage: React.FC = () => {
                 color: 'text-green-600'
               },
               {
+                roleNumber: 2,
                 role: 'partner',
                 name: 'Partner',
                 description: 'Great for event organizers and companies hosting special events.',
@@ -178,6 +242,7 @@ const RoleSettingsPage: React.FC = () => {
                 color: 'text-blue-600'
               },
               {
+                roleNumber: 3,
                 role: 'admin',
                 name: 'Admin',
                 description: 'Complete system access for platform administrators.',
@@ -188,7 +253,7 @@ const RoleSettingsPage: React.FC = () => {
               <div
                 key={roleInfo.role}
                 className={`p-4 border rounded-lg ${
-                  user.role === roleInfo.role 
+                  currentUserRole?.role === roleInfo.roleNumber 
                     ? 'border-blue-500 bg-blue-50' 
                     : 'border-gray-200 hover:border-gray-300'
                 } transition-colors`}
@@ -202,7 +267,7 @@ const RoleSettingsPage: React.FC = () => {
                       <h3 className={`font-medium ${roleInfo.color}`}>
                         {roleInfo.name}
                       </h3>
-                      {user.role === roleInfo.role && (
+                      {currentUserRole?.role === roleInfo.roleNumber && (
                         <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                           Current
                         </span>
