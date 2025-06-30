@@ -229,4 +229,5 @@ const RoleSettingsPage: React.FC = () => {
   );
 };
 
+export { RoleSettingsPage };
 export default RoleSettingsPage;

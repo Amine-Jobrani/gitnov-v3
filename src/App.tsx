@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Layout } from './components/Layout';
@@ -14,8 +13,7 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ReservationsPage } from './pages/ReservationsPage';
-import { FavoritesPage } from './pages/FavoritesPage';
-import { ProtectedRoute, GuestRoute } from './components/ProtectedRoute';   // ← ajouté GuestRoute
+import { ProtectedRoute, GuestRoute } from './components/ProtectedRoute';
 import { ReservationCheckoutPage } from './pages/ReservationCheckoutPage';
 import { PartnerDashboard } from './pages/dashboard/PartnerDashboard';
 import { OrganizerDashboard } from './pages/dashboard/OrganizerDashboard';
