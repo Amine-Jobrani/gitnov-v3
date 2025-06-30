@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Create a separate axios instance for role service to avoid conflicts
 const roleApi = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -135,80 +135,26 @@ export class RoleService {
    * Update any user's role
    */
   static async updateUserRole(userId: string, role: number): Promise<{ message: string; user: UserRole }> {
-    // Try different endpoint patterns since we're getting 404
-    const endpointsToTry = [
-      { method: 'put', url: `/users/${userId}/role`, body: { role } },
-      { method: 'patch', url: `/users/${userId}/role`, body: { role } },
-      { method: 'post', url: `/users/${userId}/role`, body: { role } },
-      { method: 'put', url: '/users/role', body: { userId, role } },
-      { method: 'patch', url: '/users/role', body: { userId, role } },
-      { method: 'post', url: '/users/role/update', body: { userId, role } },
-    ];
-
-    for (const endpoint of endpointsToTry) {
-      try {
-        console.log(`Trying ${endpoint.method.toUpperCase()} ${endpoint.url} with body:`, endpoint.body);
-        
-        let response;
-        switch (endpoint.method) {
-          case 'put':
-            response = await roleApi.put(endpoint.url, endpoint.body);
-            break;
-          case 'patch':
-            response = await roleApi.patch(endpoint.url, endpoint.body);
-            break;
-          case 'post':
-            response = await roleApi.post(endpoint.url, endpoint.body);
-            break;
-          default:
-            continue;
-        }
-        
-        console.log('Success with endpoint:', endpoint);
-        return response.data;
-      } catch (error: any) {
-        console.log(`Failed ${endpoint.method.toUpperCase()} ${endpoint.url}:`, error.response?.status, error.message);
-        
-        // If it's not a 404/405 error, throw it (could be auth or server error)
-        if (error.response?.status && ![404, 405].includes(error.response.status)) {
-          throw error;
-        }
-        
-        // Continue to next endpoint if 404/405 (endpoint doesn't exist)
-        continue;
+    try {
+      console.log(`🔄 Updating user role - userId: ${userId}, role: ${role}`);
+      
+      // Based on backend logs, the correct endpoint is PUT /users/role with userId and role in body
+      const response = await roleApi.put('/users/role', {
+        userId,
+        role
+      });
+      
+      console.log('✅ Role update successful:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Update user role error:', error);
+      
+      // Provide more detailed error information
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
       }
-    }
-    
-    // If all endpoints failed
-    throw new Error('Unable to find working endpoint for updating user role. Please check backend API documentation.');
-  }
-
-  /**
-   * Update any user's role - Alternative method using PATCH
-   */
-  static async updateUserRolePatch(userId: string, role: number): Promise<{ message: string; user: UserRole }> {
-    try {
-      const response = await roleApi.patch(`/users/${userId}/role`, {
-        role
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Update user role (PATCH) error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update any user's role - Alternative method using POST
-   */
-  static async updateUserRolePost(userId: string, role: number): Promise<{ message: string; user: UserRole }> {
-    try {
-      const response = await roleApi.post(`/users/${userId}/role`, {
-        role
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Update user role (POST) error:', error);
+      
       throw error;
     }
   }
