@@ -28,11 +28,12 @@ export interface RoleInfo {
 }
 
 export interface UserRole {
-  id: string;
+  id?: string;
+  userId?: string;
   fullName: string;
   email: string;
   role: number;
-  roleName: string;
+  roleName?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -42,6 +43,17 @@ export interface UsersResponse {
   totalCount: number;
   currentPage: number;
   totalPages: number;
+}
+
+export interface BackendResponse<T> {
+  success: boolean;
+  data: T;
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface UpdateRoleRequest {
@@ -97,7 +109,19 @@ export class RoleService {
   static async getUserRole(userId: string): Promise<UserRole> {
     try {
       const response = await roleApi.get(`/users/${userId}/role`);
-      return response.data;
+      const backendResponse = response.data as BackendResponse<UserRole>;
+      if (backendResponse.success && backendResponse.data) {
+        return {
+          id: backendResponse.data.userId || backendResponse.data.id,
+          fullName: backendResponse.data.fullName,
+          email: backendResponse.data.email,
+          role: backendResponse.data.role,
+          roleName: backendResponse.data.roleName || this.getRoleName(backendResponse.data.role),
+          createdAt: backendResponse.data.createdAt,
+          updatedAt: backendResponse.data.updatedAt
+        };
+      }
+      throw new Error('Invalid response format');
     } catch (error) {
       console.error('Get user role error:', error);
       throw error;
@@ -137,7 +161,25 @@ export class RoleService {
 
       const url = `/users${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await roleApi.get(url);
-      return response.data;
+      const backendResponse = response.data as BackendResponse<UserRole[]>;
+      
+      if (backendResponse.success && backendResponse.data) {
+        return {
+          users: backendResponse.data.map(user => ({
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role,
+            roleName: user.roleName || this.getRoleName(user.role),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
+          })),
+          totalCount: backendResponse.pagination?.total || backendResponse.data.length,
+          currentPage: backendResponse.pagination?.page || 1,
+          totalPages: backendResponse.pagination?.totalPages || 1
+        };
+      }
+      throw new Error('Invalid response format');
     } catch (error) {
       console.error('Get all users error:', error);
       throw error;

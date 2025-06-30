@@ -86,15 +86,19 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
     
     try {
       const response = await api.get(`/users/${fbUser.uid}/role`);
-      if (response.data && response.data.role !== undefined) {
-        // Map numeric role to string role
+      console.log('Backend role response:', response.data); // Debug log
+      
+      // Handle the backend response structure: { success: true, data: { role: 2, ... } }
+      if (response.data && response.data.success && response.data.data && response.data.data.role !== undefined) {
         const roleMap = {
           0: 'client',
           1: 'organizer',
           2: 'partner',
           3: 'admin'
         } as const;
-        role = roleMap[response.data.role as keyof typeof roleMap] || 'client';
+        const numericRole = response.data.data.role;
+        role = roleMap[numericRole as keyof typeof roleMap] || 'client';
+        console.log(`Mapped role ${numericRole} to ${role}`); // Debug log
       }
     } catch (error) {
       console.warn('Failed to fetch user role from backend, defaulting to client:', error);

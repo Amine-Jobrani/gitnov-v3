@@ -85,8 +85,9 @@ const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
       setShowConfirmation(false);
       onRoleChanged?.();
       onClose();
-      // Show success message
-      alert('Role updated successfully! Please refresh the page to see changes.');
+      // Show success message and reload to refresh the user data
+      alert('Role updated successfully! The page will refresh to apply changes.');
+      window.location.reload();
     } catch (error) {
       console.error('Failed to update role:', error);
       alert('Failed to update role. Please try again.');

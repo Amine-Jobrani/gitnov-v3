@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, MapPin, User, Heart, Calendar, Menu, X, LogOut, Sparkles, Settings, Users } from 'lucide-react';
+import { Search, MapPin, User, Heart, Calendar, Menu, X, LogOut, Sparkles, Settings, Users, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -70,9 +70,14 @@ export const Header: React.FC = () => {
                       {user.fullName.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <span className="hidden sm:block text-sm font-medium text-gray-700">
-                    {user.fullName}
-                  </span>
+                  <div className="hidden sm:block">
+                    <div className="text-sm font-medium text-gray-700">
+                      {user.fullName}
+                    </div>
+                    <div className="text-xs text-gray-500 capitalize">
+                      {user.role}
+                    </div>
+                  </div>
                 </button>
 
                 <AnimatePresence>
